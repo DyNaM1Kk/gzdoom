@@ -68,6 +68,38 @@ struct ExtraUniformCVARData
 	void (*OldCallback)(FBaseCVar &);
 };
 
+struct ExtraEnabledCVARData
+{
+	FString Shader;
+	bool* enabled = nullptr;
+	ExtraEnabledCVARData* Next = nullptr;
+	void (*OldCallback)(FBaseCVar &);
+};
+
+static void do_enabled_set(int value, ExtraEnabledCVARData* data)
+{
+	if (!(data->enabled))
+	{
+		for (unsigned int i = 0; i < PostProcessShaders.Size(); i++)
+		{
+			PostProcessShader& shader = PostProcessShaders[i];
+			if (strcmp(shader.Name.GetChars(), data->Shader.GetChars()) == 0)
+			{
+				data->enabled = &shader.Enabled;
+			}
+		}
+	}
+
+	bool* enabled = data->enabled;
+	if (enabled)
+	{
+		*enabled = value;
+	}
+
+	if (data->Next)
+		do_enabled_set(value, data->Next);
+}
+
 static void do_uniform_set(DVector4 value, ExtraUniformCVARData* data)
 {
 	if (!(data->vec4))
@@ -91,6 +123,14 @@ static void do_uniform_set(DVector4 value, ExtraUniformCVARData* data)
 	}
 	if (data->Next)
 		do_uniform_set(value, data->Next);
+}
+
+template<typename T>
+void enabled_callback(T& self)
+{
+	auto data = (ExtraEnabledCVARData*)self.GetExtraDataPointer2();
+	if (data->OldCallback) data->OldCallback(self);
+	do_enabled_set(*self, data);
 }
 
 template<typename T>
@@ -1752,7 +1792,62 @@ class GLDefsParser
 				}
 				else if (sc.Compare("enabled"))
 				{
-					shaderdesc.Enabled = true;
+					if (sc.CheckToken('=') && sc.CheckString("cvar"))
+					{
+						sc.MustGetString();
+						FString cvarname = sc.String;
+						FBaseCVar* cvar = FindCVar(cvarname.GetChars(), NULL);
+
+						if (!cvar)
+						{
+							sc.ScriptMessage("Unknown cvar passed to enabled");
+						}
+						else
+						{
+							bool ok = true;
+							void (*callback)(FBaseCVar&) = nullptr;
+							int setEnabled = 0;
+
+							switch (cvar->GetRealType())
+							{
+							case CVAR_Bool:
+								callback = (void (*)(FBaseCVar&))(&enabled_callback<FBoolCVar>);
+								setEnabled = cvar->GetGenericRep(CVAR_Bool).Bool;
+								break;
+							case CVAR_Int:
+								callback = (void (*)(FBaseCVar&))(&enabled_callback<FIntCVar>);
+								setEnabled = cvar->GetGenericRep(CVAR_Int).Int;
+								break;
+							case CVAR_Float:
+								callback = (void (*)(FBaseCVar&))(&enabled_callback<FFloatCVar>);
+								setEnabled = cvar->GetGenericRep(CVAR_Float).Float;
+								break;
+							default:
+								ok = false;
+								sc.ScriptError("CVar '%s' type not supported for enabled!", cvarname.GetChars());
+								break;
+							}
+
+							if (ok)
+							{
+								ExtraEnabledCVARData* oldextra = (ExtraEnabledCVARData*)cvar->GetExtraDataPointer2();
+
+								ExtraEnabledCVARData* extra = new ExtraEnabledCVARData;
+								extra->Shader = shaderdesc.Name.GetChars();
+								extra->OldCallback = oldextra ? oldextra->OldCallback : cvar->m_Callback;
+								extra->Next = oldextra;
+
+								cvar->SetCallback(callback);
+								cvar->SetExtraDataPointer2(extra);
+
+								shaderdesc.Enabled = setEnabled;
+							}
+						}
+					}
+					else
+					{
+						shaderdesc.Enabled = true;
+					}
 				}
 				else
 				{
