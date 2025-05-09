@@ -161,6 +161,16 @@ public:
 		}
 	}
 
+	inline void Callback2 ()
+	{
+		if (m_Callback2 && !inCallback2)
+		{
+			inCallback2 = !!(Flags & CVAR_VIRTUAL);
+			m_Callback2(*this);
+			inCallback2 = false;
+		}
+	}
+
 	inline const char *GetName () const { return VarName.GetChars(); }
 	inline uint32_t GetFlags () const { return Flags; }
 
@@ -221,13 +231,17 @@ public:
 	}
 
 	void SetCallback(void (*callback)(FBaseCVar&));
+	void SetCallback2(void (*callback)(FBaseCVar&));
 	void ClearCallback();
+	void ClearCallback2();
 
 	void SetExtraDataPointer(void *pointer);
 	void SetExtraDataPointer2(void *pointer);
+	void SetExtraDataPointer3(void *pointer);
 
 	void* GetExtraDataPointer();
 	void* GetExtraDataPointer2();
+	void* GetExtraDataPointer3();
 
 	int pnum = -1;
 	FName userinfoName;
@@ -254,17 +268,20 @@ protected:
 	FString ToggleMessages[2];
 	uint32_t Flags;
 	bool inCallback = false;
+	bool inCallback2 = false;
 
 private:
 	FBaseCVar (const FBaseCVar &var) = delete;
 	FBaseCVar (const char *name, uint32_t flags);
 	void (*m_Callback)(FBaseCVar &);
+	void (*m_Callback2)(FBaseCVar &);
 
 	static inline bool m_UseCallback = false;
 	static inline bool m_DoNoSet = false;
 
 	void *m_ExtraDataPointer = nullptr;
 	void *m_ExtraDataPointer2 = nullptr;
+	void *m_ExtraDataPointer3 = nullptr;
 
 	// These need to go away!
 	friend FString C_GetMassCVarString (uint32_t filter, bool compact);

@@ -174,6 +174,7 @@ FBaseCVar::FBaseCVar (const char *var_name, uint32_t flags, void (*callback)(FBa
 
 
 	m_Callback = callback;
+	m_Callback2 = callback;
 	Flags = 0;
 	VarName = "";
 	Description = descr;
@@ -225,9 +226,19 @@ void FBaseCVar::SetCallback(void (*callback)(FBaseCVar&))
 	m_Callback = callback;
 }
 
+void FBaseCVar::SetCallback2(void (*callback)(FBaseCVar&))
+{
+	m_Callback2 = callback;
+}
+
 void FBaseCVar::ClearCallback()
 {
 	m_Callback = nullptr;
+}
+
+void FBaseCVar::ClearCallback2()
+{
+	m_Callback2 = nullptr;
 }
 
 void FBaseCVar::SetExtraDataPointer(void *pointer)
@@ -250,6 +261,16 @@ void* FBaseCVar::GetExtraDataPointer2()
 	return m_ExtraDataPointer2;
 }
 
+void FBaseCVar::SetExtraDataPointer3(void* pointer)
+{
+	m_ExtraDataPointer3 = pointer;
+}
+
+void* FBaseCVar::GetExtraDataPointer3()
+{
+	return m_ExtraDataPointer3;
+}
+
 const char *FBaseCVar::GetHumanString(int precision) const
 {
 	return GetGenericRep(CVAR_String).String;
@@ -266,7 +287,10 @@ void FBaseCVar::ForceSet (UCVarValue value, ECVarType type, bool nouserinfosend)
 	if ((Flags & CVAR_USERINFO) && !nouserinfosend && !(Flags & CVAR_IGNORE))
 		if (callbacks && callbacks->UserInfoChanged) callbacks->UserInfoChanged(this);
 	if (m_UseCallback)
+	{
 		Callback ();
+		Callback2 ();
+	}
 
 	if ((Flags & CVAR_ARCHIVE) && !(Flags & CVAR_UNSAFECONTEXT))
 	{
@@ -619,6 +643,7 @@ void FBaseCVar::EnableCallbacks ()
 		if (!(cvar->Flags & CVAR_NOINITCALL))
 		{
 			cvar->Callback ();
+			cvar->Callback2 ();
 		}
 	}
 }

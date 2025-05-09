@@ -128,7 +128,7 @@ static void do_uniform_set(DVector4 value, ExtraUniformCVARData* data)
 template<typename T>
 void enabled_callback(T& self)
 {
-	auto data = (ExtraEnabledCVARData*)self.GetExtraDataPointer2();
+	auto data = (ExtraEnabledCVARData*)self.GetExtraDataPointer3();
 	if (data->OldCallback) data->OldCallback(self);
 	do_enabled_set(*self, data);
 }
@@ -1830,15 +1830,15 @@ class GLDefsParser
 
 							if (ok)
 							{
-								ExtraEnabledCVARData* oldextra = (ExtraEnabledCVARData*)cvar->GetExtraDataPointer2();
+								ExtraEnabledCVARData* oldextra = (ExtraEnabledCVARData*)cvar->GetExtraDataPointer3();
 
 								ExtraEnabledCVARData* extra = new ExtraEnabledCVARData;
 								extra->Shader = shaderdesc.Name.GetChars();
-								extra->OldCallback = oldextra ? oldextra->OldCallback : cvar->m_Callback;
+								extra->OldCallback = oldextra ? oldextra->OldCallback : cvar->m_Callback2;
 								extra->Next = oldextra;
 
-								cvar->SetCallback(callback);
-								cvar->SetExtraDataPointer2(extra);
+								cvar->SetCallback2(callback);
+								cvar->SetExtraDataPointer3(extra);
 
 								shaderdesc.Enabled = setEnabled;
 							}
